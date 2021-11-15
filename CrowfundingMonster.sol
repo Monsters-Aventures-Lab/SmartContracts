@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./Dependencies/math/SafeMath.sol";
-
 // This is a Crowfunding contract for Monster Adventure Game
 
 contract CrowfundingMonster {
@@ -25,9 +24,8 @@ contract CrowfundingMonster {
     // State variables
     uint256 public currentBalance;
     address payable public creator;
-    uint256 startingTime = 1637006280; // 1637006280 Unix time for GMT Mon Nov 15 2021 19:58:00 GMT+0000
+    uint256 startingTime = 1636989600; // 1637006280 Unix time for GMT Mon Nov 15 2021 19:58:00 GMT+0000 // 1636989600
     uint256 deadline;
-    uint256 goal;
     uint256 minContribution = 200 wei;
     uint256 maxContribution = 10 ether;
     uint256 convertionRate = 1;
@@ -60,11 +58,10 @@ contract CrowfundingMonster {
         _;
     }
 
-    constructor(uint256 numberOfDays, uint256 _goal) {
+    constructor(uint256 numberOfDays) {
         creator = payable(msg.sender);
         deadline = startingTime + (numberOfDays * 1 days);
-        goal = _goal;
-        return;
+     
     }
     
     function setCreator(address payable _creator) external isCreator {
@@ -120,26 +117,22 @@ contract CrowfundingMonster {
         }
     }
 
-    function contribute(uint256 amount) external inState(State.Fundraising) inWhitelist(msg.sender) payable {
+    function contribute(uint256 amount) inWhitelist(msg.sender) public payable returns (bool) {
         require(msg.sender != creator, "You can't contribute to your own project");
         require(msg.value == amount, "You can't contribute with a different amount");
         require(msg.value > minContribution, "You can't contribute with less than 0.2 BNB");
         require(msg.value < maxContribution, "You can't contribute with more than 10 BNB");
-        if ((block.timestamp > startingTime) && (block.timestamp < deadline)) { 
-            state = State.Fundraising;
-        }
         require(isCrowfundingStarted(), "You can't contribute until crowfunding is started");
-        require(block.timestamp < deadline, "Project has expired");
         contributions[msg.sender] = contributions[msg.sender].add(msg.value);
         contributionTimestamp[msg.sender] = block.timestamp;
         currentBalance = currentBalance.add(msg.value);
-        payable(msg.sender).transfer(creator.balance);
+        payable(creator).transfer(msg.value);
         emit FundingReceived(msg.sender, msg.value, currentBalance, contributionTimestamp[msg.sender]);
         addContributor(msg.sender);
-        return;
+        return true;
     }
 
-    function addContributor(address _wallet) public isCreator { // OJO Internal
+    function addContributor(address _wallet) internal { 
         require(isNewContributor(_wallet), "This contributor is already in the list");
         contributors.push(_wallet);
         contributorsCount = contributorsCount + 1;
