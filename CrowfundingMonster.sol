@@ -30,7 +30,7 @@ contract CrowfundingMonster {
     uint256 goal;
     uint256 minContribution = 200 wei;
     uint256 maxContribution = 10 ether;
-    uint256 convertionRate;
+    uint256 convertionRate = 1;
     State public state = State.Ready;
     int256 public contributorsCount = 0;
     address[] contributors;
@@ -40,7 +40,7 @@ contract CrowfundingMonster {
     mapping (address => bool) public whitelist;
 
     // Event that will be emitted whenever funding will be received
-    event FundingReceived(address contributor, uint amount, uint currentTotal, timestamp  );
+    event FundingReceived(address contributor, uint256 amount, uint256 currentTotal, uint256 timestamp);
 
     // Modifier to check current state
     modifier inState(State _state) {
@@ -49,7 +49,7 @@ contract CrowfundingMonster {
     }
 
     // Modifier to check current state
-    modifier inWhitelist(address _wallet) { // Ready is the default state
+    modifier inWhitelist(address _wallet) {
         require(whitelist[_wallet]);
         _;
     }
@@ -62,7 +62,7 @@ contract CrowfundingMonster {
 
     constructor(uint256 numberOfDays, uint256 _goal) {
         creator = payable(msg.sender);
-        deadline = block.timestamp + (numberOfDays days);
+        deadline = startingTime + (numberOfDays * 1 days);
         goal = _goal;
         return;
     }
@@ -71,20 +71,44 @@ contract CrowfundingMonster {
         creator = _creator;
     }
 
+    function getConvertionRate() external view returns (uint256) {
+        return convertionRate;
+    }
+
     function setConvertionRate(uint256 _convertionRate) external isCreator {
         convertionRate = _convertionRate;
     }
 
-    function setNFTUrl(address _wallet, string url) external isCreator {
+    function getNFTUrl(address _wallet) external view returns (string memory) {
+        return NFTUrl[_wallet];
+    }
+    
+    function setNFTUrl(address _wallet, string memory url) external isCreator { // OJO Internal
         NFTUrl[_wallet] = url;
     }
 
+    function getStartingTime() external view returns (uint256) {
+        return startingTime;
+    }
+
+    function getDeadline() external view returns (uint256) {
+        return deadline;
+    }
+    
     function setStartingTime(uint256 _startingTime) external isCreator {
         startingTime = _startingTime;
     }
 
     function setDeadline(uint256 _deadline) external isCreator {
         deadline = _deadline;
+    }
+    
+    function setMaxContribution(uint256 _maxContribution) external isCreator {
+        maxContribution = _maxContribution;
+    }
+
+    function setMinContribution(uint256 _minContribution) external isCreator {
+        minContribution = _minContribution;
     }
 
     function batchWhitelist(address[] memory _users) public isCreator {
@@ -115,7 +139,7 @@ contract CrowfundingMonster {
         return;
     }
 
-    function addContributor(address _wallet) public isCreator {
+    function addContributor(address _wallet) public isCreator { // OJO Internal
         require(isNewContributor(_wallet), "This contributor is already in the list");
         contributors.push(_wallet);
         contributorsCount = contributorsCount + 1;
@@ -129,7 +153,7 @@ contract CrowfundingMonster {
         return false;
     }
 
-    function startCrowdfunding() external isCreator inState(State.Fundraising) {
+    function startCrowdfunding() external isCreator inState(State.Ready) {
         state = State.Fundraising;
         return;
     }
