@@ -36,10 +36,11 @@ contract CrowfundingMonster {
     address[] contributors;
     mapping (address => uint256) public contributions;
     mapping (address => string) public NFTUrl;
+    mapping (address => uint256) public contributionTimestamp;
     mapping (address => bool) public whitelist;
 
     // Event that will be emitted whenever funding will be received
-    event FundingReceived(address contributor, uint amount, uint currentTotal ); // date
+    event FundingReceived(address contributor, uint amount, uint currentTotal, timestamp  );
 
     // Modifier to check current state
     modifier inState(State _state) {
@@ -61,7 +62,7 @@ contract CrowfundingMonster {
 
     constructor(uint256 numberOfDays, uint256 _goal) {
         creator = payable(msg.sender);
-        deadline = block.timestamp + (numberOfDays * 10 days);
+        deadline = block.timestamp + (numberOfDays days);
         goal = _goal;
         return;
     }
@@ -72,6 +73,10 @@ contract CrowfundingMonster {
 
     function setConvertionRate(uint256 _convertionRate) external isCreator {
         convertionRate = _convertionRate;
+    }
+
+    function setNFTUrl(address _wallet, string url) external isCreator {
+        NFTUrl[_wallet] = url;
     }
 
     function setStartingTime(uint256 _startingTime) external isCreator {
@@ -102,10 +107,18 @@ contract CrowfundingMonster {
         require(isCrowfundingStarted(), "You can't contribute until crowfunding is started");
         require(block.timestamp < deadline, "Project has expired");
         contributions[msg.sender] = contributions[msg.sender].add(msg.value);
+        contributionTimestamp[msg.sender] = block.timestamp;
         currentBalance = currentBalance.add(msg.value);
         payable(msg.sender).transfer(creator.balance);
-        emit FundingReceived(msg.sender, msg.value, currentBalance);
+        emit FundingReceived(msg.sender, msg.value, currentBalance, contributionTimestamp[msg.sender]);
         addContributor(msg.sender);
+        return;
+    }
+
+    function addContributor(address _wallet) public isCreator {
+        require(isNewContributor(_wallet), "This contributor is already in the list");
+        contributors.push(_wallet);
+        contributorsCount = contributorsCount + 1;
         return;
     }
 
@@ -123,12 +136,6 @@ contract CrowfundingMonster {
 
     function setState(State _state) external isCreator {
         state = _state;
-        return;
-    }
-    function addContributor(address _wallet) public isCreator {
-        require(isNewContributor(_wallet), "This contributor is already in the list");
-        contributors.push(_wallet);
-        contributorsCount = contributorsCount + 1;
         return;
     }
 
@@ -155,5 +162,4 @@ contract CrowfundingMonster {
         }
         return items;
     }
-
 }
